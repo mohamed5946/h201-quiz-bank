@@ -172,6 +172,23 @@
         transition:transform .18s var(--ease)}
       .cta:active{transform:scale(.96)}
       .cta.ghost{background:var(--surface-2);color:var(--ink);box-shadow:none;border:1px solid var(--line)}
+
+      /* ---------- Exam 20 (random practice round) ---------- */
+      .exam-bar{margin-top:16px;background:var(--surface);border:1.6px solid var(--accent);border-radius:var(--radius);
+        box-shadow:var(--shadow-sm);padding:16px 18px;display:flex;align-items:center;gap:14px 16px;flex-wrap:wrap}
+      .exam-btn{border:0;border-radius:13px;background:var(--accent);color:#fff;font-weight:900;font-size:18px;
+        padding:14px 26px;min-height:54px;box-shadow:0 6px 16px rgba(30,90,122,.3);
+        transition:transform .18s var(--ease);flex:none}
+      .exam-btn:active{transform:scale(.96)}
+      .exam-bar p{margin:0;color:var(--ink-soft);font-size:14.5px;line-height:1.8;flex:1 1 240px}
+      .exam-banner{margin-top:14px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:13px;
+        padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .exam-banner span{font-weight:800;color:var(--accent-strong);font-size:14.5px;flex:1 1 220px;line-height:1.7}
+      .exam-banner button{border:1px solid var(--accent);background:var(--surface);color:var(--accent-strong);
+        border-radius:10px;padding:9px 13px;min-height:42px;font-weight:800;font-size:13.5px;
+        transition:transform .18s var(--ease)}
+      .exam-banner button:active{transform:scale(.96)}
+      .exam-banner button.primary{background:var(--accent);color:#fff}
       .empty{display:none;text-align:center;color:var(--ink-soft);padding:56px 20px;line-height:1.9}
       .empty.show{display:block;animation:rise .5s var(--ease) both}
       footer{margin-top:34px;text-align:center;color:var(--ink-faint);font-size:13px;line-height:1.9}
@@ -230,6 +247,11 @@
         </div>
       </header>
 
+      <div class="exam-bar">
+        <button class="exam-btn" id="exam20Btn">🎲 عشرين سؤال</button>
+        <p>كل ضغطة على الزرار بتجيبلك 20 سؤال عشوائي مختلفين من البنك كله، بترتيب عشوائي — حلّهم كأنك في امتحان مصغّر، وأول ما تخلّص العشرين هتظهر نتيجتك وتقدر تراجع غلطاتك أو تجيب عشرين جداد.</p>
+      </div>
+
       <div class="controls" id="controls">
         <button class="filters-toggle" id="filtersToggle" aria-expanded="false" aria-controls="controlsBody">
           <span>الفلاتر والبحث والمواضيع</span>
@@ -254,6 +276,11 @@
         </div></div>
       </div>
 
+      <div class="exam-banner" id="examBanner" style="display:none">
+        <span>أنت دلوقتي في وضع «عشرين سؤال» — دول 20 سؤال عشوائي للتدريب. خلّصهم وهتظهر نتيجتك تحت.</span>
+        <button class="primary" id="examAgainBtn">🎲 عشرين سؤال جداد</button>
+        <button id="exitExamBtn">عرض كل الأسئلة</button>
+      </div>
       <div class="count-line" id="countLine"></div>
       <main id="list"></main>
       <div class="empty" id="empty">مفيش أسئلة مطابقة للفلتر ده.<br/>جرّب تغيّر البنك أو الموضوع أو كلمة البحث.</div>
@@ -262,6 +289,7 @@
         <div class="big" id="sumScore"></div>
         <p id="sumText"></p>
         <button class="cta" id="retryWrong" style="display:none">اتدرب على الغلطات بس</button>
+        <button class="cta" id="newExam20">🎲 عشرين سؤال جداد</button>
         <button class="cta ghost" id="restartAll">ابدأ من الأول خالص</button>
       </section>
 
@@ -284,6 +312,7 @@
         query: "",
         wrongOnly: false,
         onlyIds: null,
+        examMode: false,
         shuffled: false,
         order: QUESTIONS.map(function(q){ return q.id; }),
         answers: {}, // id -> chosen index
@@ -340,6 +369,7 @@
           ch.addEventListener("click", function(){
             state.topic = ch.getAttribute("data-topic");
             state.onlyIds = null;
+            state.examMode = false;
             render();
           });
         });
@@ -394,6 +424,7 @@
 
       function render(){
         renderChips();
+        updateExamUI();
         var vis = visibleQuestions();
         document.getElementById("countLine").textContent = vis.length ? ("ظاهر دلوقتي " + vis.length + " سؤال") : "";
         listEl.innerHTML = vis.map(cardHTML).join("");
@@ -517,6 +548,7 @@
           state.bank = b.getAttribute("data-bank");
           state.topic = "all";
           state.onlyIds = null;
+          state.examMode = false;
           render();
           window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
         });
@@ -544,16 +576,67 @@
         render();
         updateWrongBtn();
       });
+      function updateExamUI(){
+        var banner = document.getElementById("examBanner");
+        if (banner) banner.style.display = state.examMode ? "" : "none";
+      }
+
+      function startExam20(){
+        var pool = QUESTIONS.map(function(q){ return q.id; });
+        for (var i = pool.length - 1; i > 0; i--){
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+        }
+        var picked = pool.slice(0, Math.min(20, pool.length));
+        var set = {};
+        picked.forEach(function(id){ set[id] = true; });
+        state.onlyIds = set;
+        state.examMode = true;
+        state.bank = "all";
+        state.topic = "all";
+        state.query = "";
+        state.wrongOnly = false;
+        state.answers = {};
+        state.lastId = null;
+        state.order = picked.concat(pool.slice(picked.length));
+        document.getElementById("search").value = "";
+        Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(x){
+          x.classList.toggle("on", x.getAttribute("data-bank") === "all");
+        });
+        render();
+        updateWrongBtn();
+        var banner = document.getElementById("examBanner");
+        if (banner) banner.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      }
+
+      function exitExam(){
+        state.examMode = false;
+        state.onlyIds = null;
+        state.wrongOnly = false;
+        state.order = QUESTIONS.map(function(q){ return q.id; });
+        render();
+        updateWrongBtn();
+        window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+      }
+
       function resetAll(){
         state.answers = {};
         state.lastId = null;
         state.wrongOnly = false;
         state.onlyIds = null;
+        state.examMode = false;
+        state.order = QUESTIONS.map(function(q){ return q.id; });
+        state.shuffled = false;
+        document.getElementById("shuffleBtn").classList.remove("on");
         render();
         updateWrongBtn();
         window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
       }
       document.getElementById("resetBtn").addEventListener("click", resetAll);
+      document.getElementById("exam20Btn").addEventListener("click", startExam20);
+      document.getElementById("examAgainBtn").addEventListener("click", startExam20);
+      document.getElementById("newExam20").addEventListener("click", startExam20);
+      document.getElementById("exitExamBtn").addEventListener("click", exitExam);
       document.getElementById("restartAll").addEventListener("click", resetAll);
       document.getElementById("retryWrong").addEventListener("click", function(){
         var wrongSet = {};
@@ -566,6 +649,7 @@
         if (!Object.keys(wrongSet).length) return;
         state.onlyIds = wrongSet;
         state.wrongOnly = false;
+        state.examMode = false;
         render();
         updateWrongBtn();
         window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
@@ -599,6 +683,7 @@
           state.query = "";
           state.wrongOnly = false;
           state.onlyIds = null;
+          state.examMode = false;
           document.getElementById("search").value = "";
           Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(x){
             x.classList.toggle("on", x.getAttribute("data-bank") === "all");
